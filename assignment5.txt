@@ -1,0 +1,74 @@
+% Input Parameters
+M = input('Number of Symbols (M) = '); 
+SNR = input('SNR of M-ary QAM system in dB = ');
+
+% Generate Random Symbol Sequence
+x1 = randi([0, M-1], 500, 1);  % Generating M-ary symbols (0 to M-1)
+
+% Modulate the symbols using 16-QAM (manually)
+mod_signal = qammod_manual(x1, M);
+
+% Calculate the signal power
+signal_power = mean(abs(mod_signal).^2);
+
+% Convert SNR from dB to linear scale
+SNR_linear = 10^(SNR / 10);
+
+% Calculate noise power based on the signal power and SNR
+noise_power = signal_power / SNR_linear;
+
+% Generate Gaussian noise
+noise = sqrt(noise_power / 2) * (randn(size(mod_signal)) + 1i * randn(size(mod_signal)));
+
+% Add noise to the signal
+y1n = mod_signal + noise;
+
+% Plot the noisy signal using scatter plot
+scatter(real(y1n), imag(y1n), 'r.');
+title('Received Signal Constellation');
+xlabel('Real Part');
+ylabel('Imaginary Part');
+
+% Demodulate the received signal
+y1r = qamdemod_manual(y1n, M);
+
+% Calculate symbol error rate
+[num_error, er_rate] = symerr(x1, y1r);
+
+% Display the results
+disp(['Number of Symbol Errors: ', num2str(num_error)]);
+disp(['Symbol Error Rate: ', num2str(er_rate)]);
+
+% --- Manual 16-QAM Modulation ---
+function signal = qammod_manual(symbols, M)
+    % Determine the size of the constellation (M-QAM)
+    n = sqrt(M);
+    % Map symbols to grid points
+    real_part = mod(symbols, n);  % Map to rows
+    imag_part = floor(symbols / n);  % Map to columns
+
+    % Normalize to scale the constellation
+    scaling_factor = 2;
+    real_part = 2 * real_part - (n - 1);  % Scale to range [-n+1, n-1]
+    imag_part = 2 * imag_part - (n - 1);  % Scale to range [-n+1, n-1]
+
+    % Combine real and imaginary parts
+    signal = scaling_factor * (real_part + 1i * imag_part);
+end
+
+% --- Manual 16-QAM Demodulation ---
+function symbols = qamdemod_manual(received, M)
+    n = sqrt(M);
+    scaling_factor = 2;
+    
+    % Normalize the received signal
+    received_real = real(received) / scaling_factor;
+    received_imag = imag(received) / scaling_factor;
+    
+    % Quantize the received signal to nearest constellation points
+    real_part = round((received_real + (n - 1)) / 2);
+    imag_part = round((received_imag + (n - 1)) / 2);
+    
+    % Map back to symbol indices
+    symbols = real_part + n * imag_part;
+end
